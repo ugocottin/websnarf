@@ -8,13 +8,13 @@ This is a clone of the Websnarf tool in c, from http://www.unixwiz.net/tools/web
 
 | Command | Works |
 |--|--|
-| `--help` | [checkbox:checked] |
-| `--log FILE` | [checkbox:unchecked] |
-| `--port ##` | [checkbox:checked] |
-| `--timeout ##` | [checkbox:checked] |
-| `--apache` | [checkbox:unchecked] |
-| `--max=##` | [checkbox:checked] |
-| `--save=DIR` | [checkbox:unchecked] |
+| `--help` | Yes |
+| `--log FILE` | No |
+| `--port ##` | Yes |
+| `--timeout ##` | Yes |
+| `--apache` | No |
+| `--max=##` | Yes |
+| `--save=DIR` | No |
 
 ## Usage
 

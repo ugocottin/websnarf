@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
                    "--help          show this listing");
         } else if (strcmp(arg, "--log") == 0) {
             snarf.logfile = argv[i + 1];
-            snarf.file = fopen(snarf.logfile, "rw");
+            snarf.file = fopen(snarf.logfile, "w+");
 
             if (snarf.file == NULL) {
                 printf("Error: cannot create logfile %s: %s\n", snarf.logfile, strerror(errno));

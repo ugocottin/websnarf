@@ -3,6 +3,7 @@
 //
 
 #include <arpa/inet.h>
+#include <time.h>
 #include "server.h"
 
 void run(websnarf snarf, server serv) {
@@ -17,9 +18,10 @@ void run(websnarf snarf, server serv) {
 
     while (1) {
         new_sock_fd = accept(serv.socket.socket, &client_address, &client_address_len);
+        struct sockaddr_in *addr_in = (struct sockaddr_in *) &client_address;
 
         if (snarf.debug) {
-            struct sockaddr_in *addr_in = (struct sockaddr_in *) &client_address;
+
             char *s = inet_ntoa(addr_in->sin_addr);
             printf("--> accepted connection from %s\n", s);
         }
@@ -57,6 +59,19 @@ void run(websnarf snarf, server serv) {
 
             if (snarf.debug) {
                 printf("    got read %zd bytes\n", size);
+            }
+
+            char log[2048];
+            time_t t = time(NULL);
+            struct tm tm = *localtime(&t);
+            snprintf(log, sizeof log, "[%d/%d/%d %d:%d:%d] [%s:%d -> :%d] %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, inet_ntoa(addr_in->sin_addr), addr_in->sin_port, snarf.port, buffer);
+
+            if (snarf.file) {
+                fputs(log, snarf.file);
+            }
+
+            if (!snarf.debug && !snarf.file) {
+                printf("%s", log);
             }
 
             // Process des données ici

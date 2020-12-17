@@ -5,7 +5,7 @@
 #ifndef WEBSNARF_MAIN_H
 #define WEBSNARF_MAIN_H
 
-#define VERSION "0.0.1"
+#define VERSION "0.0.2"
 
 #include <stdlib.h>
 #include <stdio.h>

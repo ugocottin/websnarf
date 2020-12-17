@@ -9,7 +9,7 @@ This is a clone of the Websnarf tool in c, from http://www.unixwiz.net/tools/web
 | Command | Works |
 |--|--|
 | `--help` | Yes |
-| `--log FILE` | No |
+| `--log FILE` | Yes |
 | `--port ##` | Yes |
 | `--timeout ##` | Yes |
 | `--apache` | No |

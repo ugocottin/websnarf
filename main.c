@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
     snarf.maxsize = 4096;
     snarf.debug = 0;
     snarf.apache = 0;
+    snarf.resolve = 0;
 
     for(int i = 1; i < argc; i++) {
 
@@ -21,13 +22,14 @@ int main(int argc, char** argv) {
 
         if (strcmp(arg, "--help") == 0) {
             printf("usage: %s [options]\n", argv[0]);
-            printf("--timeout <n>   wait at most <n> seconds on a read (default $alarmtime)\n"
+            printf("--timeout <n>   wait at most <n> seconds on a read (default 0 = no timeout)\n"
                    "--log FILE      append output to FILE (default stdout only)\n"
-                   "--port <n>      listen on TCP port <n> (default $port/tcp)\n"
-                   "--max <n>       save at most <n> chars of request (default $maxline chars)\n"
-                   "--save DIR      save all incoming headers into DIR\n"
-                   "--debug         turn on a bit of debugging (mainly for developers)\n"
-                   "--apache        logs are in Apache style\n"
+                   "--port <n>      listen on TCP port <n> (default 80)\n"
+                   "--max <n>       save at most <n> chars of request (default 4096 bytes)\n"
+                   "--save DIR      save all incoming data into DIR/ipaddress\n"
+                   "--debug         turn on a bit of debugging\n"
+                   "--apache        logs are in Apache style (non implemented)\n"
+                   "--resolve       resolve ip hostname of incoming request\n"
                    "--version       show version info\n"
                    "\n"
                    "--help          show this listing");
@@ -57,7 +59,9 @@ int main(int argc, char** argv) {
             snarf.debug = 1;
         } else if (strcmp(arg, "--apache") == 0) {
             snarf.apache = 1;
-        } else if (strcmp(arg, "--version") == 0) {
+        } else if (strcmp(arg, "--resolve") == 0) {
+            snarf.resolve = 1;
+        }else if (strcmp(arg, "--version") == 0) {
             printf("Websnarf version %s\n", VERSION);
             exit(EXIT_SUCCESS);
         } else {

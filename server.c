@@ -4,7 +4,47 @@
 
 #include <arpa/inet.h>
 #include <time.h>
+#include <netdb.h>
 #include "server.h"
+
+char *getAddress(struct sockaddr client_address) {
+
+    switch (client_address.sa_family) {
+        case AF_INET: {
+            char *buf = malloc(INET_ADDRSTRLEN);
+            struct sockaddr_in *addr_in = (struct sockaddr_in *) &client_address;
+            if (inet_ntop(AF_INET, &addr_in->sin_addr, buf, INET_ADDRSTRLEN) == NULL)
+                perror("inet_ntop");
+            return buf;
+        }
+
+        case AF_INET6: {
+            char *buf6 = malloc(INET6_ADDRSTRLEN);
+            struct sockaddr_in6 *addr_in = (struct sockaddr_in6 *) &client_address;
+            if (inet_ntop(AF_INET6, &addr_in->sin6_addr, buf6, INET6_ADDRSTRLEN) == NULL)
+                perror("inet_ntop");
+            return buf6;
+        }
+    }
+
+    return "unknown";
+}
+
+char* resolve(struct sockaddr client_address, websnarf snarf) {
+
+    char* address = getAddress(client_address);
+    if (snarf.resolve) {
+        char *node = malloc(NI_MAXHOST);
+        if (getnameinfo(&client_address, sizeof(client_address), node, NI_MAXHOST, NULL, 0, NI_NAMEREQD)) {
+            if (snarf.debug) printf("Unable to get hostname of %s\n", address);
+            free(node);
+        } else {
+            return node;
+        }
+    }
+
+    return address;
+}
 
 void run(websnarf snarf, server serv) {
 
@@ -19,11 +59,10 @@ void run(websnarf snarf, server serv) {
     while (1) {
         new_sock_fd = accept(serv.socket.socket, &client_address, &client_address_len);
         struct sockaddr_in *addr_in = (struct sockaddr_in *) &client_address;
+        char *address = resolve(client_address, snarf);
 
         if (snarf.debug) {
-
-            char *s = inet_ntoa(addr_in->sin_addr);
-            printf("--> accepted connection from %s\n", s);
+            printf("--> accepted connection from %s\n", address);
         }
 
         if (new_sock_fd < 0) {
@@ -64,7 +103,7 @@ void run(websnarf snarf, server serv) {
             char log[2048];
             time_t t = time(NULL);
             struct tm tm = *localtime(&t);
-            snprintf(log, sizeof log, "[%d/%d/%d %d:%d:%d] [%s:%d -> :%d] %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, inet_ntoa(addr_in->sin_addr), addr_in->sin_port, snarf.port, buffer);
+            snprintf(log, sizeof log, "[%d/%d/%d %d:%d:%d] [%s:%d -> :%d] %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, address, addr_in->sin_port, snarf.port, buffer);
 
             if (snarf.file) {
                 fputs(log, snarf.file);
@@ -72,6 +111,10 @@ void run(websnarf snarf, server serv) {
 
             if (!snarf.debug && !snarf.file) {
                 printf("%s", log);
+            }
+
+            if (snarf.save_dir) {
+
             }
 
             // Process des données ici

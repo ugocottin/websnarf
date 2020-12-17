@@ -15,6 +15,7 @@ typedef struct s_websnarf {
     char* save_dir;
     int debug;
     int apache;
+    int resolve;
     FILE *file;
 } websnarf;
 

@@ -13,8 +13,8 @@ This is a clone of the Websnarf tool in c, from http://www.unixwiz.net/tools/web
 | `--port ##` | Yes |
 | `--timeout ##` | Yes |
 | `--apache` | No |
-| `--max=##` | Yes |
-| `--save=DIR` | No |
+| `--max ##` | Yes |
+| `--save DIR` | Yes |
 
 ## Usage
 
@@ -44,4 +44,4 @@ Only show up to ## chars of the request.
 
 `--save=DIR`
 
-Save each full header in a file in directory DIR. The filename is named for the source and destination IP -- otherwise this would not be available -- and it's not so clear that this is really all that interesting. We need to find a better format for the filenames or decide if this functionality even belongs here.
+Save each request in a finle in directory DIR. The filename is named for the source IP or hostname if available

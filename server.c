@@ -5,6 +5,8 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <netdb.h>
+#include <libc.h>
+#include <errno.h>
 #include "server.h"
 
 char *getAddress(struct sockaddr client_address) {
@@ -46,6 +48,36 @@ char* resolve(struct sockaddr client_address, websnarf snarf) {
     return address;
 }
 
+char* getTimeStamp(time_t *time) {
+    char *timestamp = malloc(22);
+    struct tm tm = *localtime(time);
+    snprintf(timestamp, 22, "[%04d/%02d/%02d %02d:%02d:%02d]", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    return timestamp;
+}
+
+char* createFileName(time_t *time) {
+    char *timestamp = malloc(20);
+    struct tm tm = *localtime(time);
+    snprintf(timestamp, 20, "%04d_%02d_%02d_%02d_%02d_%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    return timestamp;
+}
+
+void trace(char* message) {
+    time_t t = time(NULL);
+    char* timestamp = getTimeStamp(&t);
+    printf("%s %s\n", timestamp, message);
+    free(timestamp);
+}
+
+void trace2(char* message, char* out, ssize_t len) {
+    time_t t = time(NULL);
+    char* timestamp = getTimeStamp(&t);
+    snprintf(out, len, "%s %s", timestamp, message);
+    free(timestamp);
+}
+
 void run(websnarf snarf, server serv) {
 
     int new_sock_fd;
@@ -62,11 +94,16 @@ void run(websnarf snarf, server serv) {
         char *address = resolve(client_address, snarf);
 
         if (snarf.debug) {
-            printf("--> accepted connection from %s\n", address);
+            char message[1024];
+            snprintf(message, sizeof message, "accepting connection from %s", address);
+            trace(message);
         }
 
         if (new_sock_fd < 0) {
-            perror("Error while accepting connection");
+            if (snarf.debug) {
+                trace("Error while accepting new connection");
+                perror("");
+            }
             exit(EXIT_FAILURE);
         }
 
@@ -76,52 +113,83 @@ void run(websnarf snarf, server serv) {
             timeout.tv_usec = 0;
 
             if (setsockopt(new_sock_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
-                perror("Unable to set timeout on socket\n");
+                if (snarf.debug) {
+                    trace("Unable to set timeout on socket");
+                    perror("");
+                }
         }
 
         if (fork() == 0) {
+            if (snarf.debug) {
+                char message[1024];
+                snprintf(message, sizeof message, "Create new worker with pid %d", getpid());
+                trace(message);
+            }
 
             char *buffer = malloc(snarf.maxsize);
             memset(buffer, '\0', snarf.maxsize);
 
             if (snarf.debug) {
-                printf("    client ready to read, now reading\n");
+                trace("Worker ready to read");
             }
 
             size = read(new_sock_fd, buffer, snarf.maxsize);
 
-            if (size < 0) {
-                printf("Error while receiving data\n");
-                close(new_sock_fd);
-                exit(EXIT_FAILURE);
+            if (snarf.debug) {
+                char message[1024];
+                snprintf(message, sizeof message, "Worker got read %zd bytes", size);
+                trace(message);
             }
 
-            if (snarf.debug) {
-                printf("    got read %zd bytes\n", size);
-            }
+            if (snarf.debug) trace("Worker now process request");
 
             char log[2048];
             time_t t = time(NULL);
-            struct tm tm = *localtime(&t);
-            snprintf(log, sizeof log, "[%d/%d/%d %d:%d:%d] [%s:%d -> :%d] %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, address, addr_in->sin_port, snarf.port, buffer);
+            snprintf(log, sizeof log, "[%s:%d -> :%d] %s", address, addr_in->sin_port, snarf.port, buffer);
 
             if (snarf.file) {
-                fputs(log, snarf.file);
+                if (snarf.debug) trace("Worker writing to log file");
+                char content[snarf.maxsize + 30];
+                trace2(log, content, sizeof content);
+                fputs(content, snarf.file);
+            } else {
+                if (snarf.debug) trace("Worker printing to stdout");
+                trace(log);
             }
 
-            if (!snarf.debug && !snarf.file) {
-                printf("%s", log);
+            if (strlen(snarf.save_dir) > 0) {
+                // Si on a précisé un répertoire de sauvegarde
+                struct stat sb;
+                char folder[2048];
+                snprintf(folder, sizeof folder, "%s/%s", snarf.save_dir, address);
+
+                int access = 1;
+                // On regarde si on peut accéder au dossier de sauvegarde
+                if (stat(folder, &sb) != 0 || !S_ISDIR(sb.st_mode)) {
+                    // Si non, on tente de le créer
+                    if (snarf.debug) trace("Worker unable to access save dir, trying to create it");
+                    if (mkdir(folder, S_IRWXU | S_IRWXG) < 0 && errno != EEXIST) {
+                        // Si mkdir renvoie une erreur différente de EEXIST
+                        if (snarf.debug) trace("Worker unable to create save dir, nothing will be saved");
+                        access = 0;
+                    }
+                }
+
+                if (access) {
+                    char absolute[4096];
+                    char *filename = createFileName(&t);
+                    snprintf(absolute, sizeof absolute, "%s/%s", folder, filename);
+                    free(filename);
+                    FILE *file = fopen(absolute, "w+");
+                    fputs(buffer, file);
+                    fclose(file);
+                }
             }
-
-            if (snarf.save_dir) {
-
-            }
-
-            // Process des données ici
 
             if (snarf.debug) {
-                printf("    finish processing request, now closing the connection\n");
+                if (snarf.debug) trace("Worker finish processing request, now closing the connection\n");
             }
+
             close(new_sock_fd);
             close(serv.socket.socket);
             exit(EXIT_SUCCESS);

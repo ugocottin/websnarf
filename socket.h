@@ -18,6 +18,6 @@ typedef struct s_socket {
     int port;
 } s_socket;
 
-s_socket createSocket(websnarf snarf, int proto);
+s_socket createSocket(websnarf snarf, int proto, int af);
 
 #endif //WEBSNARF_SOCKET_H

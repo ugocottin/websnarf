@@ -15,6 +15,7 @@ int main(int argc, char** argv) {
     snarf.debug = 0;
     snarf.apache = 0;
     snarf.resolve = 0;
+    snarf.v6 = 0;
 
     for(int i = 1; i < argc; i++) {
 
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
                    "--debug         turn on a bit of debugging\n"
                    "--apache        logs are in Apache style (non implemented)\n"
                    "--resolve       resolve ip hostname of incoming request\n"
+                   "--6             use IPv6 instead of IPv4\n"
                    "--version       show version info\n"
                    "\n"
                    "--help          show this listing");
@@ -61,7 +63,9 @@ int main(int argc, char** argv) {
             snarf.apache = 1;
         } else if (strcmp(arg, "--resolve") == 0) {
             snarf.resolve = 1;
-        }else if (strcmp(arg, "--version") == 0) {
+        } else if (strcmp(arg, "--6") == 0) {
+            snarf.v6 = 1;
+        } else if (strcmp(arg, "--version") == 0) {
             printf("Websnarf version %s\n", VERSION);
             exit(EXIT_SUCCESS);
         } else {
@@ -71,7 +75,10 @@ int main(int argc, char** argv) {
     }
 
     server _server;
-    _server.socket = createSocket(snarf, SOCK_STREAM);
+
+    int af = snarf.v6 ? AF_INET6 : AF_INET;
+
+    _server.socket = createSocket(snarf, SOCK_STREAM, af);
     listen(_server.socket.socket, 5);
 
     run(snarf, _server);

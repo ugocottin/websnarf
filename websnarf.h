@@ -16,6 +16,7 @@ typedef struct s_websnarf {
     int debug;
     int apache;
     int resolve;
+    int v6;
     FILE *file;
 } websnarf;
 

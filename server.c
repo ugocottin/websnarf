@@ -9,6 +9,21 @@
 #include <errno.h>
 #include "server.h"
 
+char* getTimeStamp(time_t *time) {
+    char *timestamp = malloc(22);
+    struct tm tm = *localtime(time);
+    snprintf(timestamp, 22, "[%04d/%02d/%02d %02d:%02d:%02d]", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    return timestamp;
+}
+
+void trace(char* message) {
+    time_t t = time(NULL);
+    char* timestamp = getTimeStamp(&t);
+    printf("%s %s\n", timestamp, message);
+    free(timestamp);
+}
+
 char *getAddress(struct sockaddr client_address) {
 
     switch (client_address.sa_family) {
@@ -38,7 +53,11 @@ char* resolve(struct sockaddr client_address, websnarf snarf) {
     if (snarf.resolve) {
         char *node = malloc(NI_MAXHOST);
         if (getnameinfo(&client_address, sizeof(client_address), node, NI_MAXHOST, NULL, 0, NI_NAMEREQD)) {
-            if (snarf.debug) printf("Unable to get hostname of %s\n", address);
+            if (snarf.debug) {
+                char message[1024];
+                snprintf(message, sizeof message, "Unable to get hostname of %s", address);
+                trace(message);
+            }
             free(node);
         } else {
             return node;
@@ -48,27 +67,12 @@ char* resolve(struct sockaddr client_address, websnarf snarf) {
     return address;
 }
 
-char* getTimeStamp(time_t *time) {
-    char *timestamp = malloc(22);
-    struct tm tm = *localtime(time);
-    snprintf(timestamp, 22, "[%04d/%02d/%02d %02d:%02d:%02d]", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
-    return timestamp;
-}
-
 char* createFileName(time_t *time) {
     char *timestamp = malloc(20);
     struct tm tm = *localtime(time);
     snprintf(timestamp, 20, "%04d_%02d_%02d_%02d_%02d_%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
     return timestamp;
-}
-
-void trace(char* message) {
-    time_t t = time(NULL);
-    char* timestamp = getTimeStamp(&t);
-    printf("%s %s\n", timestamp, message);
-    free(timestamp);
 }
 
 void trace2(char* message, char* out, ssize_t len) {
@@ -181,8 +185,15 @@ void run(websnarf snarf, server serv) {
                     snprintf(absolute, sizeof absolute, "%s/%s", folder, filename);
                     free(filename);
                     FILE *file = fopen(absolute, "w+");
-                    fputs(buffer, file);
-                    fclose(file);
+                    if (file == NULL) {
+                        trace("unable to open file");
+                    } else {
+                        trace("Worker write incoming data to file");
+                        if(fputs(buffer, file) < 0) {
+                            trace("unable to write to file");
+                        }
+                        fclose(file);
+                    }
                 }
             }
 

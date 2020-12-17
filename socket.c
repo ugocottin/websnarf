@@ -4,11 +4,12 @@
 
 #include "socket.h"
 
-s_socket createSocket(websnarf snarf, int proto) {
+s_socket createSocket(websnarf snarf, int proto, int af) {
 
     int _sock;
     int _bind;
     struct sockaddr_in address;
+    struct sockaddr_in6 address6;
     struct s_socket _socket;
 
     if (proto != SOCK_STREAM && proto != SOCK_DGRAM) {
@@ -16,10 +17,15 @@ s_socket createSocket(websnarf snarf, int proto) {
         exit(EXIT_FAILURE);
     }
 
+    if (af != AF_INET && af != AF_INET6) {
+        perror("Invalid address family");
+        exit(EXIT_FAILURE);
+    }
+
     if (proto == SOCK_STREAM) {
-        _sock = socket(AF_INET, proto, IPPROTO_TCP);
+        _sock = socket(af, proto, IPPROTO_TCP);
     } else {
-        _sock = socket(AF_INET, proto, IPPROTO_UDP);
+        _sock = socket(af, proto, IPPROTO_UDP);
     }
 
     if (_sock < 0) {
@@ -29,9 +35,13 @@ s_socket createSocket(websnarf snarf, int proto) {
     int optval = 1;
     setsockopt(_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 
-    address.sin_family = AF_INET;
+    address.sin_family = af;
     address.sin_port = htons(snarf.port);
     address.sin_addr.s_addr = INADDR_ANY;
+
+    address6.sin6_family = AF_INET6;
+    address6.sin6_port = htons(snarf.port);
+    address6.sin6_addr = in6addr_any;
 
     if (snarf.timeout > 0) {
         struct timeval timeout;
@@ -42,7 +52,12 @@ s_socket createSocket(websnarf snarf, int proto) {
             perror("Unable to set timeout on socket\n");
     }
 
-    _bind = bind(_sock, (struct sockaddr *) &address, sizeof address);
+    if (af == AF_INET) {
+        _bind = bind(_sock, (struct sockaddr *) &address, sizeof address);
+    } else {
+        _bind = bind(_sock, (struct sockaddr *) &address6, sizeof address6);
+    }
+
     if (_bind < 0) {
         perror("Error while binding to port");
         exit(EXIT_FAILURE);
